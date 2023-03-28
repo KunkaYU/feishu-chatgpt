@@ -299,7 +299,8 @@ type SQLAction struct { //生成sql并查询结果
 
 func (*SQLAction) Execute(a *ActionInfo) bool {
 	//判断是否是SQL
-	if a.info.msgType == "sqldata" {
+	if _, foundPic := utils.EitherTrimEqual(a.info.qParsed,
+		"/sql"); foundPic {
 
 		msg := []openai.Messages{
 			{Role: "system", Content: "你是一个SQL语句生成器，负责帮我生成SQL语句，语句基于Postgres语法。表结构信息如下："},
