@@ -3,12 +3,14 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"start-feishubot/initialization"
 	"start-feishubot/services"
 	"start-feishubot/services/openai"
 	"start-feishubot/utils"
 	"start-feishubot/utils/audio"
+	"strings"
 
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
@@ -289,4 +291,91 @@ func (*AudioAction) Execute(a *ActionInfo) bool {
 
 	return true
 
+}
+
+type SQLAction struct { //生成sql并查询结果
+
+}
+
+func (*SQLAction) Execute(a *ActionInfo) bool {
+	//判断是否是SQL
+	if a.info.msgType == "sqldata" {
+
+		msg := []openai.Messages{
+			{Role: "system", Content: "你是一个SQL语句生成器，负责帮我生成SQL语句，语句基于Postgres语法。表结构信息如下："},
+			{Role: "assistant", Content: "eth_dim.dim_addr_contracts每个合约一条记录，包含如下列：contract_address(string)合约地址，deployer（string）部署合约的地址，block_timestamp（bigint）合约的部署时间；"},
+			{Role: "assistant", Content: "eth_dim.dim_addr_deposit_addresses每个充币地址一条记录，包含如下列：address（string）充币地址，exchange_name（string）充币地址所属交易所的名称"},
+		}
+		msg = append(msg, openai.Messages{
+			Role: "user", Content: a.info.qParsed,
+		})
+		completions, err := a.handler.gpt.Completions(msg)
+		if err != nil {
+			replyMsg(*a.ctx, fmt.Sprintf(
+				"🤖️：消息机器人摆烂了，请稍后再试～\n错误信息: %v", err), a.info.msgId)
+			return false
+		}
+
+		start := strings.Index(completions.Content, "```")
+		end := strings.Index(completions.Content[start+3:], "```")
+		var sql string
+		if start == -1 || end == -1 {
+			replyMsg(*a.ctx, fmt.Sprintf(
+				"🤖️：消息机器人摆烂了，请稍后再试～\n错误信息: %v", err), a.info.msgId)
+			return false
+		} else {
+			sql = completions.Content[start+3 : start+3+end]
+		}
+
+		holo := initialization.GetPGClient()
+		rows, err := holo.Query(context.Background(), sql)
+		if err != nil {
+			replyMsg(*a.ctx, fmt.Sprintf(
+				"🤖️：消息机器人摆烂了，请稍后再试～\n错误信息: %v", err), a.info.msgId)
+			return false
+		}
+
+		msgReply := "|"
+		// fmt.Printf("|")
+		// 获取列描述
+		colDescriptions := rows.FieldDescriptions()
+		for _, v := range colDescriptions {
+			// fmt.Printf("%v|", v.Name)
+			msgReply += fmt.Sprintf("%v|", v.Name)
+		}
+		// fmt.Printf("\n")
+		msgReply += "\n"
+		// 遍历结果
+		for rows.Next() {
+			values, err := rows.Values()
+			if err != nil {
+				log.Fatalf("Failed to read row values: %v", err)
+			}
+			// fmt.Printf("|")
+			msgReply += "|"
+			for _, value := range values {
+				// fmt.Printf("%v|", value)
+				msgReply += fmt.Sprintf("%v|", value)
+			}
+			// fmt.Printf("\n")
+			msgReply += "\n"
+		}
+
+		a.handler.sessionCache.Clear(*a.info.sessionId)
+		//if new topic
+		if len(msg) == 2 {
+			//fmt.Println("new topic", msg[1].Content)
+			sendNewTopicCard(*a.ctx, a.info.sessionId, a.info.msgId,
+				completions.Content)
+			return false
+		}
+		err = replyMsg(*a.ctx, completions.Content, a.info.msgId)
+		if err != nil {
+			replyMsg(*a.ctx, fmt.Sprintf(
+				"🤖️：消息机器人摆烂了，请稍后再试～\n错误信息: %v", err), a.info.msgId)
+			return false
+		}
+		return true
+	}
+	return true
 }

@@ -107,3 +107,23 @@ func TestVariateOneImageWithJpg(t *testing.T) {
 		t.Errorf("TestVariateOneImage returned empty imageURL")
 	}
 }
+
+func TestSQLCompletions(t *testing.T) {
+	config := initialization.LoadConfig("../../config.yaml")
+
+	msgs := []Messages{
+		{Role: "system", Content: "你是一个SQL语句生成器，负责帮我生成SQL语句，语句基于Postgres语法。表结构信息如下："},
+		{Role: "assistant", Content: "eth_dim.dim_addr_contracts每个合约一条记录，包含如下列：contract_address(string)合约地址，deployer（string）部署合约的地址，block_timestamp（bigint）合约的部署时间；"},
+		{Role: "assistant", Content: "eth_dim.dim_addr_deposit_addresses每个充币地址一条记录，包含如下列：address（string）充币地址，exchange_name（string）充币地址所属交易所的名称"},
+		{Role: "user", Content: "生成这个查询SQL: 查询哪些交易所部署的合约最多"},
+	}
+
+	gpt := NewChatGPT(*config)
+
+	resp, err := gpt.Completions(msgs)
+	if err != nil {
+		t.Errorf("TestCompletions failed with error: %v", err)
+	}
+
+	fmt.Println(resp.Content, resp.Role)
+}

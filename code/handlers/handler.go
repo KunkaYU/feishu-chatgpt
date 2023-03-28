@@ -199,6 +199,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 	actions := []Action{
 		&ProcessedUniqueAction{}, //避免重复处理
 		&ProcessMentionAction{},  //判断机器人是否应该被调用
+		&SQLAction{},             //SQL查询处理
 		&AudioAction{},           //语音处理
 		&PicAction{},             //图片处理
 		&EmptyAction{},           //空消息处理
