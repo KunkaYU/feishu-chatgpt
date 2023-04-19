@@ -113,9 +113,12 @@ func TestSQLCompletions(t *testing.T) {
 
 	msgs := []Messages{
 		{Role: "system", Content: "你是一个SQL语句生成器，负责帮我生成SQL语句，语句基于Postgres语法。表结构信息如下："},
+		{Role: "system", Content: "ac_crawler_contract_prices表中有所有token的价格，包含列有：quote_currency_smart_contract(string)token合约地址，asset_name(string)token的名称，chain(string)token所在的链，price_timestamp(string)yyyy-MM-dd HH:mm:ss格式的时间戳，close(float)价格；"},
+		{Role: "system", Content: "bsc_ads.ads_addr_balance表中有所有用户地址所有token的持仓余额，包含的列有：org_address(string)用户地址，contract_address(string)token合约地址，token_decimals(int)表示余额中小数点右移的位数，balance(numeric)表示地址在该币种的小数点右移token_decimals位后的持仓；"},
+
 		{Role: "assistant", Content: "eth_dim.dim_addr_contracts每个合约一条记录，包含如下列：contract_address(string)合约地址，deployer（string）部署合约的地址，block_timestamp（bigint）合约的部署时间；"},
 		{Role: "assistant", Content: "eth_dim.dim_addr_deposit_addresses每个充币地址一条记录，包含如下列：address（string）充币地址，exchange_name（string）充币地址所属交易所的名称"},
-		{Role: "user", Content: "生成这个查询SQL: 查询哪些交易所部署的合约最多"},
+		{Role: "user", Content: "生成这个查询SQL: 查询哪个地址的总资产最多"},
 	}
 
 	gpt := NewChatGPT(*config)
